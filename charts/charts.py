@@ -22,6 +22,18 @@ def chart_hook_temp_over_time(df: pd.DataFrame) -> alt.Chart:
         .properties(height=320)
     )
 
+def chart_windspeeds_over_time(df: pd.DataFrame) -> alt.Chart:
+    return (
+        alt.Chart(df)
+        .mark_line()
+        .encode(
+            x=alt.X("date:T", title="Date"),
+            y=alt.Y("wind:Q", title="Wind Speed"),
+            tooltip=[alt.Tooltip("date:T"), alt.Tooltip("wind:Q", format=".1f")],
+        )
+        .properties(height=320)
+    )
+
 def chart_context_seasonality(df: pd.DataFrame) -> alt.Chart:
     month_order = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
     return (
@@ -98,6 +110,44 @@ def chart_dashboard(df: pd.DataFrame) -> alt.Chart:
         .mark_bar()
         .encode(
             x=alt.X("temp_max:Q", bin=alt.Bin(maxbins=30), title="Daily max temp (°C)"),
+            y=alt.Y("count():Q", title="Days"),
+            tooltip=[alt.Tooltip("count():Q", title="Days")],
+        )
+        .transform_filter(w_select)
+        .transform_filter(brush)
+        .properties(height=260)
+    )
+
+    return alt.vconcat(line, hist).resolve_scale(color="independent")
+
+def chart_dashboard_precipitation(df: pd.DataFrame) -> alt.Chart:
+    weather_types = sorted(df["weather"].unique())
+
+    w_select = alt.selection_point(
+        fields=["weather"],
+        bind=alt.binding_select(options=weather_types, name="Weather: "),
+    )
+    brush = alt.selection_interval(encodings=["x"], name="Time window")
+
+    line = (
+        alt.Chart(df)
+        .mark_line()
+        .encode(
+            x=alt.X("date:T", title="Date"),
+            y=alt.Y("precipitation:Q", title="Precipitation (in)"),
+            color=alt.Color("weather:N", title="Weather"),
+            tooltip=["date:T", "weather:N", alt.Tooltip("precipitation:Q", format=".1f")],
+        )
+        .add_params(w_select, brush)
+        .transform_filter(w_select)
+        .properties(height=260)
+    )
+
+    hist = (
+        alt.Chart(df)
+        .mark_bar()
+        .encode(
+            x=alt.X("precipitation:Q", bin=alt.Bin(maxbins=30), title="Precipitation (in)"),
             y=alt.Y("count():Q", title="Days"),
             tooltip=[alt.Tooltip("count():Q", title="Days")],
         )
